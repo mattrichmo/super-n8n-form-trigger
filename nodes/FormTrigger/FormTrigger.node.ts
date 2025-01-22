@@ -9,45 +9,16 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-
-
-const MainPage = {
-	title: 'Main Page',
-	description: 'Main Page',
-	fields: [{
-		title: 'Plant Seeds',
-		goesToIndex: '1',
-	}]
-};
-const innerSections = [{
-	title: 'Plant Seeds',
-	description: 'Plant Seeds',
-	fields: [{
-		title: 'Plant Seeds',
-		goesToIndex: '1',
-	}]
-}]
-const submitPage = {
-	title: 'Submit Page',
-	description: 'Submit Page',
-	fields: [{
-		title: 'Submit Button',
-		goesToIndex: '1',
-	}]
-}
-
-
-
 export class FormTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Super Form Trigger',
-		name: 'superFormTrigger',
+		displayName: 'Form Trigger',
+		name: 'formTrigger',
 		icon: 'file:webhook.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts a workflow when SuperForm events occur',
+		description: 'Starts a workflow when Form events occur',
 		defaults: {
-			name: 'Super Form Trigger',
+			name: 'Form Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
