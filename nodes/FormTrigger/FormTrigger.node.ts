@@ -11,14 +11,14 @@ import {
 
 export class FormTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Form Trigger',
-		name: 'formTrigger',
+		displayName: 'Super Form Trigger',
+		name: 'superFormTrigger',
 		icon: 'file:webhook.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts a workflow when Form events occur',
+		description: 'Starts a workflow when SuperForm events occur',
 		defaults: {
-			name: 'Form Trigger',
+			name: 'Super Form Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
