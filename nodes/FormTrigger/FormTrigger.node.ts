@@ -9,16 +9,18 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
+import { fieldRegistry, getFieldOptions, FieldType } from '../../@fields/field-registry';
+
 export class FormTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Super Form Trigger',
-		name: 'superFormTrigger',
+		displayName: 'Form Trigger',
+		name: 'formTrigger',
 		icon: 'file:webhook.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts a workflow when SuperForm events occur',
+		description: 'Starts a workflow when Form events occur',
 		defaults: {
-			name: 'Super Form Trigger',
+			name: 'Form Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -95,6 +97,29 @@ export class FormTrigger implements INodeType {
 				},
 			},
 			{
+				displayName: 'Form Design',
+				name: 'formType',
+				type: 'options',
+				options: [
+					{
+						name: 'Modern',
+						value: 'modernHtml',
+						description: 'Use The Modern Theme',
+					},
+					{
+						name: 'Simple',
+						value: 'formBuilder',
+						description: 'Simple Form',
+					},
+					{
+						name: 'Animated',
+						value: 'formBuilder',
+						description: 'Simple Form',
+					},
+				],
+				default: 'formBuilder',
+			},
+			{
 				displayName: 'Fields',
 				name: 'fields',
 				placeholder: 'Add Fields',
@@ -115,95 +140,44 @@ export class FormTrigger implements INodeType {
 				options: [
 					{
 						name: 'item',
-						displayName: 'Item',
+						displayName: 'Field',
 						values: [
+							{
+								displayName: 'Field Type',
+								name: 'fieldType',
+								type: 'options',
+								options: getFieldOptions(),
+								default: 'short-text',
+							},
 							{
 								displayName: 'Label',
 								name: 'label',
 								type: 'string',
 								default: '',
-								description: 'Label for the input item',
+								description: 'Label for the field',
 							},
 							{
-								displayName: 'Name or ID',
+								displayName: 'Name',
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Name to use for the input item',
-							},
-							{
-								displayName: 'Input Type',
-								name: 'inputType',
-								type: 'options',
-								default: 'text',
-								description: 'Input type for the field',
-								options: [
-									{
-										name: 'Date',
-										value: 'date',
-									},
-									{
-										name: 'Email',
-										value: 'email',
-									},
-									{
-										name: 'Hidden',
-										value: 'hidden',
-									},
-									{
-										name: 'Password',
-										value: 'password',
-									},
-									{
-										name: 'Text',
-										value: 'text',
-									},
-								],
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Default value to use',
-								displayOptions : {
-									show: {
-										inputType: [
-											'hidden',
-											'text',
-											'email',
-										],
-									},
-								},
-							},
-							{
-								displayName: 'Placeholder',
-								name: 'placeholder',
-								type: 'string',
-								default: '',
-								description: 'Placeholder value to use',
-								displayOptions : {
-									show: {
-										inputType: [
-											'text',
-											'email',
-										],
-									},
-								},
+								description: 'Technical name for the field',
 							},
 							{
 								displayName: 'Required',
 								name: 'required',
 								type: 'boolean',
 								default: false,
-								description: 'Whether the field is required or not',
 							},
 							{
-								displayName: 'Read-Only',
-								name: 'readOnly',
-								type: 'boolean',
-								default: false,
-								description: 'Whether the field is read-only or not',
+								displayName: 'Field Options',
+								name: 'fieldOptions',
+								type: 'collection',
+								default: {},
+								options: [
+									// This will be dynamically populated based on field type
+									// We'll handle this in the webhook method
+								],
 							},
 						],
 					},
@@ -298,34 +272,31 @@ return false;
 			const pageDescription = this.getNodeParameter('pageDescription', 0) as string;
 			const formType = this.getNodeParameter('formType', 0) as string;
 
-			let htmlFields = '';
+			const fields = this.getNodeParameter('fields.item', []) as Array<{
+				fieldType: FieldType;
+				label: string;
+				name: string;
+				required: boolean;
+				fieldOptions: Record<string, any>;
+			}>;
 
-			if (formType === 'customHTML') {
-				htmlFields = this.getNodeParameter('formHTML', 0) as string;
-			} else {
-				// HTML Fields
-				const formFields = this.getNodeParameter(
-					'fields.item',
-					0,
-				) as unknown as IDataObject[];
+			// Transform fields into their respective components
+			const formFields = fields.map(field => {
+				const FieldClass = fieldRegistry[field.fieldType];
+				const schema = FieldClass.getSchema();
+				
+				return {
+					...schema,
+					...field,
+					options: {
+						...schema.options,
+						...field.fieldOptions,
+					},
+				};
+			});
 
-				for (const field of formFields) {
-					const valAttr = typeof field.value !== 'undefined' ? ` value="${field.value}"` : '';
-
-					const placeholderAttr = typeof field.placeholder !== 'undefined' ? ` placeholder="${field.placeholder}"` : '';
-					const reqAttr = field.required ? ' required' : '';
-					const readOnlyAttr = field.readOnly ? ' readonly' : '';
-
-					htmlFields += '<div class="form-group">';
-					// No label for hidden fields
-					if (field.inputType !== 'hidden') {
-						htmlFields += `<label for="${field.name}">${field.label}</label>`;
-					}
-					htmlFields += `<input type="${field.inputType}" class="form-control" id="${field.name}" name="${field.name}"${placeholderAttr}${valAttr}${reqAttr}${readOnlyAttr}/>`;
-
-					htmlFields += '</div>';
-				}
-			}
+			// Generate form HTML based on fields
+			const formHtml = generateFormHtml(formFields);
 
 			const defaultJS = `$(document).on('submit','#n8n-form',function(e){
 	$.post('#', $('#n8n-form').serialize(), function(result) {
@@ -373,7 +344,7 @@ return false;
 								<p>${pageDescription}</p>
 								<form action='#' method='POST' name='${formName}' id='${formId}'>
 									<div class="item">
-										${htmlFields}
+										${formHtml}
 									</div>
 									<div class="btn-block">
 										<button type="submit">${submitLabel}</button>
@@ -399,4 +370,29 @@ return false;
 			],
 		};
 	}
+}
+
+function generateFormHtml(fields: any[]): string {
+	// This function will generate the HTML for each field type
+	// We can create a separate file for this if it gets too complex
+	return fields.map(field => {
+		switch (field.type) {
+			case 'short-text':
+				return `
+					<div class="form-group">
+						<label for="${field.name}">${field.label}</label>
+						<input type="text" 
+							class="form-control" 
+							id="${field.name}" 
+							name="${field.name}"
+							${field.required ? 'required' : ''}
+							${field.options.placeholder ? `placeholder="${field.options.placeholder}"` : ''}
+						/>
+					</div>
+				`;
+			// Add cases for other field types
+			default:
+				return '';
+		}
+	}).join('\n');
 }

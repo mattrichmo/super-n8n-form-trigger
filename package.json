@@ -1,5 +1,5 @@
 {
-  "name": "super-n8n-form-trigger",
+  "name": "n8n-nodes-form-trigger",
   "version": "0.1.0",
   "description": "Form builder and trigger for n8n workflows",
   "keywords": [
